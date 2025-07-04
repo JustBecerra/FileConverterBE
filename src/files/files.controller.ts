@@ -5,6 +5,7 @@ import {
   Get,
   UseInterceptors,
   UploadedFile,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
@@ -20,7 +21,18 @@ export class FilesController {
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
-  convertFile(@UploadedFile() file: Express.Multer.File): Express.Multer.File {
-    return this.filesService.formatFile(file);
+  async convertFile(@UploadedFile() file: Express.Multer.File, @Res() res) {
+    const convertedFile = await this.filesService.formatFile(file);
+
+    // Encode filename to handle special characters
+    const encodedFilename = encodeURIComponent(convertedFile.originalname);
+
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+      'Content-Length': convertedFile.size,
+    });
+
+    res.send(convertedFile.buffer);
   }
 }
